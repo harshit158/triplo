@@ -1,0 +1,14 @@
+[project]
+name = "trip-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "streamlit>=1.45.1",
+]
+
+[project.scripts]
+trip-tracker = "streamlit run:app --server.address 0.0.0.0 --server.port 8501"
+
+tool.uv.packages = true
