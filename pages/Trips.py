@@ -14,10 +14,6 @@ def display_participants():
             participants.append(new_participant)
             st.session_state.participants = participants
             st.rerun()
-        # print(new_participant)
-        # participants.append(new_participant)
-        # st.session_state.participants = participants
-        # print(st.session_state.participants)
     
 with st.columns(1, border=False)[0]:
     st.title("Utah")
@@ -26,6 +22,7 @@ with st.columns(1, border=False)[0]:
     
     with st.expander("Itinerary", expanded=True):
         cols = st.columns(2)
+        
         with cols[0]:
             with st.container(height=500):
                 st.markdown("<h5 style='text-align: left; padding: 0px; color: green;'>Tuesday, September 5</h5><br>", unsafe_allow_html=True)
