@@ -1,9 +1,27 @@
 from dataclasses import dataclass
-from typing import List, enum
-from datetime import date
+from typing import List
+from enum import Enum, auto
+from datetime import date, time
 import uuid
 
-class ItineraryType(enum.Enum):
+class Airport(Enum):
+    BOS = "BOS (Boston Logan)"
+    SJC = "SJC (San Jose)"
+    SFO = "SFO (San Francisco)"
+    LAX = "LAX (Los Angeles)"
+    JFK = "JFK (John F. Kennedy)"
+    DCA = "DCA (Washington Dulles)"
+
+class Airline(Enum):
+    JetBlue = 'JetBlue'
+    Delta = 'Delta'
+    United = 'United'
+    American = 'American'
+    Etihad = 'Etihad'
+    Emirates = 'Emirates'
+    Southwest = 'Southwest'
+    
+class ItineraryType(Enum):
     Flight = 'Flight'
     Hotel = 'Hotel'
     Car = 'Car'
@@ -11,16 +29,16 @@ class ItineraryType(enum.Enum):
 
 @dataclass
 class FlightLeg:
-    origin: str
+    origin: Airport
     departure_time: str
-    destination: str
+    destination: Airport
     arrival_time: str
     
 @dataclass
 class ItineraryFlight:
-    origin: str
+    origin: Airport
     airline: str
-    destination: str
+    destination: Airport
     confirmation: str
     legs: list[FlightLeg]
     cost: float
@@ -34,22 +52,30 @@ class ItineraryHotel:
     check_in_time: str
     check_out_date: str
     check_out_time: str
+    notes: str
     cost: float
 
 @dataclass
 class ItineraryCar:
     pick_up_location: str
-    pick_up_date: str
-    pick_up_time: str
+    pick_up_date: date
+    pick_up_time: time
     drop_off_location: str
-    drop_off_date: str
-    drop_off_time: str
+    drop_off_date: date
+    drop_off_time: time
+    cost: float
+
+@dataclass
+class ItineraryActivity:
+    name: str
+    location: str
+    description: str
     cost: float
     
 @dataclass
 class ItineraryItem:
     type: ItineraryType
-    details: ItineraryFlight | ItineraryHotel | ItineraryCar
+    item: ItineraryFlight | ItineraryHotel | ItineraryCar | ItineraryActivity
 
 @dataclass
 class Trip:

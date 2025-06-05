@@ -1,4 +1,5 @@
 import streamlit as st
+from utils import trips as trips_utils
 
 with st.popover("Add a Trip", use_container_width=True):
     st.text_input("Name")
@@ -24,6 +25,8 @@ with st.columns(1, border=False)[0]:
         cols = st.columns(2)
         
         with cols[0]:
+            trips_utils.add_itinerary()
+                    
             with st.container(height=500):
                 st.markdown("<h5 style='text-align: left; padding: 0px; color: green;'>Tuesday, September 5</h5><br>", unsafe_allow_html=True)
                 st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>✈️ Flight</h6><br>", unsafe_allow_html=True)
