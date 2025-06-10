@@ -1,3 +1,3 @@
-import streamlit as st
+from page_utils.dashboard import main
 
-st.map()
+main.main()
