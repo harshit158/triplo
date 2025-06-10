@@ -3,6 +3,7 @@ from typing import List, Optional, Union
 from enum import Enum
 from datetime import date, time
 import streamlit as st
+import urllib.parse
 import uuid
 
 # Enums
@@ -37,6 +38,7 @@ class BaseItineraryItem(BaseModel):
     end_time: Optional[time]
 
 class Hotel(BaseItineraryItem):
+    category: ItineraryType = ItineraryType.Hotel
     trip_id: str
     name: str
     address: str
@@ -45,10 +47,14 @@ class Hotel(BaseItineraryItem):
     cost: float
     
     def display_start(self):
-        return st.markdown(f"{self.start_date} {self.start_time}")
+        st.markdown(f"#### {self.name}")
+        st.markdown(f":red[Check-In Time]: {self.start_time}")
+        st.markdown(f"Maps URL: {self.maps_url}")
     
     def display_end(self):
-        return st.markdown(f"{self.end_date} {self.end_time}")
+        st.markdown(f"#### {self.name}")
+        st.markdown(f":red[Check-Out Time]: {self.end_time}")
+        st.markdown(f"Maps URL: {self.maps_url}")
     
 class FlightLeg(BaseModel):
     origin: Airport
@@ -65,15 +71,23 @@ class Flight(BaseModel):
     cost: float
     notes: Optional[str] = None
 
-class Car(BaseModel):
-    pick_up_location: str
-    pick_up_date: date
-    pick_up_time: time
-    drop_off_location: str
-    drop_off_date: date
-    drop_off_time: time
+class Car(BaseItineraryItem):
+    category: ItineraryType = ItineraryType.Car
+    trip_id: str
+    pickup_location: str
+    dropoff_location: str
     cost: float
     notes: Optional[str] = None
+    
+    def display_start(self):
+        st.markdown(f"#### {self.pickup_location}")
+        st.markdown(f":red[Pickup Time]: {self.start_time}")
+    
+    def display_end(self):
+        dropoff_location = self.dropoff_location if self.dropoff_location else self.pickup_location
+        gmaps_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote_plus(dropoff_location)}"
+        st.markdown(f"##### [{dropoff_location}]({gmaps_url})")
+        st.markdown(f":red[Dropoff Time]: {self.end_time}")
 
 class Activity(BaseModel):
     name: str

@@ -6,12 +6,25 @@ from models import ItineraryType, ItineraryItem, Flight, Hotel, Car, Activity, F
 
 def display_trip(trip: Trip):    
     hotels = api_utils.fetch_all("hotel", Hotel, filter_field="trip_id", filter_value=trip.id)
+    cars = api_utils.fetch_all("car", Car, filter_field="trip_id", filter_value=trip.id)
+    
+    all_itineraries = hotels + cars
     dates = defaultdict(list)
     
-    for hotel in hotels:
-        dates[hotel.start_date].append(hotel.display_start)
-        if hotel.end_date:
-            dates[hotel.end_date].append(hotel.display_end)
+    for itinerary in all_itineraries:
+        dates[itinerary.start_date].append([itinerary.display_start, itinerary])
+        if itinerary.end_date:
+            dates[itinerary.end_date].append([itinerary.display_end, itinerary])
+    
+    # sort dates
+    dates = dict(sorted(dates.items()))
+    
+    icons = {
+        ItineraryType.Flight: "✈️",
+        ItineraryType.Hotel: "🏨",
+        ItineraryType.Car: "🚗",
+        ItineraryType.Activity: "🎉"
+    }
     
     with st.columns(1, border=False)[0]:
         st.title(trip.name)
@@ -24,42 +37,15 @@ def display_trip(trip: Trip):
                 add_itinerary(trip.id)
                 
                 with st.container(height=500):
-                    for date, display_funcs in dates.items():
-                        st.markdown(f"<h5 style='text-align: left; padding: 0px; color: green;'>{date}</h5><br>", unsafe_allow_html=True)
-                        for func in display_funcs:
-                            st.markdown(f"<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>🛌 Accommodation</h6><br>", unsafe_allow_html=True)
+                    for date, display_funcs_and_itineraries in dates.items():
+                        st.markdown(f"<h4 style='text-align: left; padding: 0px; color: green;'>{date}</h4><br>", unsafe_allow_html=True)
+                        for func, itinerary in display_funcs_and_itineraries:
+                            st.markdown(f"<h5 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>{icons[itinerary.category]} {itinerary.category.value}</h5><br>", unsafe_allow_html=True)
                             func()
                             st.divider()
-                        
-                # with st.container(height=500):
-                #     st.markdown("<h5 style='text-align: left; padding: 0px; color: green;'>Tuesday, September 5</h5><br>", unsafe_allow_html=True)
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>✈️ Flight</h6><br>", unsafe_allow_html=True)
-                    
-                #     st.markdown("[Open JetBlue App](jetblue://)", unsafe_allow_html=True)
-                    
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>🛌 Accommodation</h6><br>", unsafe_allow_html=True)
-                #     st.markdown("<a href='https://www.google.com/maps/place/Wyndham+Visalia/data=!4m2!3m1!1s0x0:0xe23a39812213a431?sa=X&ved=1t:2428&ictx=111'>Wyndham Visalia</a>", unsafe_allow_html=True)
-
-                    
-                #     st.divider()
-                    
-                #     st.markdown("<h5 style='text-align: left; padding: 0px; color: green;'>Tuesday, September 5</h5><br>", unsafe_allow_html=True)
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>✈️ Flight</h6><br>", unsafe_allow_html=True)
-                #     st.markdown(":red[BOS: (23:11)] -> :green[SFO (20:00)]", unsafe_allow_html=True)
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>🛌 Accommodation</h6><br>", unsafe_allow_html=True)
-                #     st.markdown("<a href='https://www.google.com/maps/place/Wyndham+Visalia/data=!4m2!3m1!1s0x0:0xe23a39812213a431?sa=X&ved=1t:2428&ictx=111'>Wyndham Visalia</a>", unsafe_allow_html=True)
-                    
-                #     st.divider()
-                    
-                #     st.markdown("<h5 style='text-align: left; padding: 0px; color: green;'>Tuesday, September 5</h5><br>", unsafe_allow_html=True)
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>✈️ Flight</h6><br>", unsafe_allow_html=True)
-                #     st.markdown(":red[BOS: (23:11)] -> :green[SFO (20:00)]", unsafe_allow_html=True)
-                #     st.markdown("<h6 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>🛌 Accommodation</h6><br>", unsafe_allow_html=True)
-                #     st.markdown("<a href='https://www.google.com/maps/place/Wyndham+Visalia/data=!4m2!3m1!1s0x0:0xe23a39812213a431?sa=X&ved=1t:2428&ictx=111'>Wyndham Visalia</a>", unsafe_allow_html=True)
-                #     st.image("https://lh3.googleusercontent.com/p/AF1QipNxQ8tKwCEpvbSgjN0bmU5H0mIkUB0uGpgOZlDe=w408-h272-k-no", width=100)
             
             with cols[1]:
-                st.map()
+                st.map(height=560)
     
 def display_trips():
     trips = api_utils.fetch_all("trip", Trip)
@@ -137,31 +123,33 @@ def add_itinerary(trip_id: str):
                 
                 st.toast(f"Hotel added: {hotel.name}", icon="✅")
                 api_utils.insert(hotel)
+                st.rerun()
 
         elif itinerary_type == ItineraryType.Car.value:
-            pick_up_location = st.text_input("Pick-up Location")
-            pick_up_date = st.date_input("Pick-up Date")
-            pick_up_time = st.time_input("Pick-up Time", step=300)
-            drop_off_location = st.text_input("Drop-off Location")
-            drop_off_date = st.date_input("Drop-off Date")
-            drop_off_time = st.time_input("Drop-off Time", step=300)
+            pickup_location = st.text_input("Pick-up Location")
+            pickup_date = st.date_input("Pick-up Date")
+            pickup_time = st.time_input("Pick-up Time", step=300)
+            dropoff_location = st.text_input("Drop-off Location")
+            dropoff_date = st.date_input("Drop-off Date")
+            dropoff_time = st.time_input("Drop-off Time", step=300)
             cost = st.number_input("Cost", min_value=0.0)
             notes = st.text_area("Notes", key="car_notes")
 
             if st.button("Add Car", use_container_width=True):
-                itinerary_item = ItineraryItem(
-                    type=ItineraryType.Car,
-                    item=ItineraryCar(
-                        pick_up_location=pick_up_location,
-                        pick_up_date=str(pick_up_date),
-                        pick_up_time=pick_up_time,
-                        drop_off_location=drop_off_location,
-                        drop_off_date=str(drop_off_date),
-                        drop_off_time=drop_off_time,
-                        cost=cost,
-                        notes=notes
-                    )
+                car=Car(
+                    trip_id=trip_id,
+                    pickup_location=pickup_location,
+                    start_date=str(pickup_date),
+                    start_time=pickup_time,
+                    dropoff_location=dropoff_location,
+                    end_date=str(dropoff_date),
+                    end_time=dropoff_time,
+                    cost=cost,
+                    notes=notes
                 )
+            
+                st.toast(f"Car added: {car.pickup_location} to {car.dropoff_location}", icon="✅")
+                api_utils.insert(car)
 
         elif itinerary_type == ItineraryType.Activity.value:
             name = st.text_input("Activity Name")
@@ -186,6 +174,7 @@ def add_itinerary(trip_id: str):
                 st.session_state.itinerary_list = []
             st.session_state.itinerary_list.append(itinerary_item)
             st.toast(f"{itinerary_item.type.value} added to trip!")
+            st.rerun()
 
 def add_trip():
     with st.popover("Add a Trip", use_container_width=True):
