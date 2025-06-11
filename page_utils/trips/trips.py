@@ -1,14 +1,20 @@
 import streamlit as st
 from collections import defaultdict
-from database import supabase
 from utils import api_utils
-from models import ItineraryType, ItineraryItem, Flight, Hotel, Car, Activity, FlightLeg, Airport, Airline, Trip
+from models import ItineraryType, Flight, FlightLeg, FlightwithLegs, Hotel, Car, Activity, Airport, Airline, Trip
 
 def display_trip(trip: Trip):    
     hotels = api_utils.fetch_all("hotel", Hotel, filter_field="trip_id", filter_value=trip.id)
     cars = api_utils.fetch_all("car", Car, filter_field="trip_id", filter_value=trip.id)
+    activity = api_utils.fetch_all("activity", Activity, filter_field="trip_id", filter_value=trip.id)
     
-    all_itineraries = hotels + cars
+    flights = api_utils.fetch_all("flight", Flight, filter_field="trip_id", filter_value=trip.id)
+    legs = []
+    for flight in flights:
+        flight_legs = api_utils.fetch_all("flightleg", FlightLeg, filter_field="flight_id", filter_value=flight.id)
+        legs.extend(flight_legs)
+    
+    all_itineraries = hotels + cars + activity + legs
     dates = defaultdict(list)
     
     for itinerary in all_itineraries:
@@ -20,7 +26,7 @@ def display_trip(trip: Trip):
     dates = dict(sorted(dates.items()))
     
     icons = {
-        ItineraryType.Flight: "✈️",
+        ItineraryType.FlightLeg: "✈️",
         ItineraryType.Hotel: "🏨",
         ItineraryType.Car: "🚗",
         ItineraryType.Activity: "🎉"
@@ -58,7 +64,7 @@ def add_itinerary(trip_id: str):
 
         itinerary_type = st.selectbox(
             "Select Itinerary Type",
-            options=[t.value for t in ItineraryType]
+            options=[t.value for t in ItineraryType if t != ItineraryType.FlightLeg]
         )
 
         # Initialize placeholders
@@ -67,34 +73,48 @@ def add_itinerary(trip_id: str):
         if itinerary_type == ItineraryType.Flight.value:
             origin = st.selectbox("Origin", options=[a.value for a in Airport])
             destination = st.selectbox("Destination", options=[a.value for a in Airport])
-            airline = st.selectbox("Airline", options=["Select Airline"]+[a.value for a in Airline])
-            confirmation = st.text_input("Confirmation Number")
-            cost = st.number_input("Cost", min_value=0.0)
             notes = st.text_area("Notes", key="flight_notes")
             
             num_legs = st.selectbox("Number of Flight Legs", options=[1, 2, 3])
             legs = []
             for i in range(num_legs):
                 st.subheader(f"Leg {i+1}")
+                leg_airline = st.selectbox(f"Leg {i+1} Airline", options=[a.value for a in Airline], key=f'leg_airline_{i}')
+                leg_confirmation = st.text_input(f"Leg {i+1} Confirmation Number", key=f'leg_conf_{i}')
+                leg_cost = st.number_input(f"Leg {i+1} Cost", min_value=0.0, key=f'leg_cost_{i}')
                 leg_origin = st.selectbox(f"Leg {i+1} Origin", options=[a.value for a in Airport], key=f'leg_origin_{i}')
+                leg_departure_date = st.date_input(f"Leg {i+1} Departure Date", key=f'leg_dep_date_{i}')
                 leg_departure_time = st.time_input(f"Leg {i+1} Departure Time", key=f'leg_dep_{i}', step=300)
                 leg_destination = st.selectbox(f"Leg {i+1} Destination", options=[a.value for a in Airport], key=f'leg_dest_{i}')
+                leg_arrival_date = st.date_input(f"Leg {i+1} Arrival Date", key=f'leg_arr_date_{i}')
                 leg_arrival_time = st.time_input(f"Leg {i+1} Arrival Time", key=f'leg_arrival_{i}', step=300)
-                legs.append(FlightLeg(origin=leg_origin, departure_time=leg_departure_time, destination=leg_destination, arrival_time=leg_arrival_time))
+                legs.append(FlightLeg(origin=leg_origin, 
+                                      airline=leg_airline,
+                                      confirmation=leg_confirmation,
+                                      cost=leg_cost,
+                                      start_date=leg_departure_date, 
+                                      start_time=leg_departure_time, 
+                                      destination=leg_destination, 
+                                      end_date=leg_arrival_date, 
+                                      end_time=leg_arrival_time))
 
             if st.button("Add Flight", use_container_width=True):
-                itinerary_item = ItineraryItem(
-                    type=ItineraryType.Flight,
-                    item=ItineraryFlight(
+                    flight = Flight(
+                        trip_id=trip_id,
                         origin=origin,
-                        airline=airline,
                         destination=destination,
-                        confirmation=confirmation,
-                        legs=legs,
-                        cost=cost,
                         notes=notes
                     )
-                )
+                    
+                    st.toast(f"Flight added", icon="✅")
+                    flight_id = api_utils.insert(flight)
+                    
+                    for leg in legs:
+                        leg.flight_id = flight_id
+                        api_utils.insert(leg)
+                    
+                    st.rerun()
+                    
 
         elif itinerary_type == ItineraryType.Hotel.value:
             name = st.text_input("Hotel Name", value="dummy")
@@ -150,23 +170,30 @@ def add_itinerary(trip_id: str):
             
                 st.toast(f"Car added: {car.pickup_location} to {car.dropoff_location}", icon="✅")
                 api_utils.insert(car)
+                st.rerun()
 
         elif itinerary_type == ItineraryType.Activity.value:
             name = st.text_input("Activity Name")
             location = st.text_input("Location")
+            date = st.date_input("Date")
+            time = st.time_input("Time", step=300)
             description = st.text_area("Description")
             cost = st.number_input("Cost", min_value=0.0)
 
             if st.button("Add Activity", use_container_width=True):
-                itinerary_item = ItineraryItem(
-                    type=ItineraryType.Activity,
-                    item=ItineraryActivity(
+                activity=Activity(
+                        trip_id=trip_id,
                         name=name,
+                        start_date=str(date),
+                        start_time=time,
                         location=location,
                         description=description,
                         cost=cost
-                    )
                 )
+                    
+                st.toast(f"Activity added: {activity.start_date} @ {activity.location}", icon="✅")
+                api_utils.insert(activity)
+                st.rerun()
 
         # Save to session state if created
         if itinerary_item:
