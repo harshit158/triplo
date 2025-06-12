@@ -1,7 +1,7 @@
 import streamlit as st
 from collections import defaultdict
 from utils import api_utils
-from models import ItineraryType, Flight, FlightLeg, FlightwithLegs, Hotel, Car, Activity, Airport, Airline, Trip
+from models import ItineraryType, Flight, FlightLeg, FlightwithLegs, Hotel, Car, Activity, Airport, Airline, Trip, CarRentalCompany
 
 def display_trip(trip: Trip):    
     hotels = api_utils.fetch_all("hotel", Hotel, filter_field="trip_id", filter_value=trip.id)
@@ -79,22 +79,26 @@ def add_itinerary(trip_id: str):
             legs = []
             for i in range(num_legs):
                 st.subheader(f"Leg {i+1}")
-                leg_airline = st.selectbox(f"Leg {i+1} Airline", options=[a.value for a in Airline], key=f'leg_airline_{i}')
-                leg_confirmation = st.text_input(f"Leg {i+1} Confirmation Number", key=f'leg_conf_{i}')
-                leg_cost = st.number_input(f"Leg {i+1} Cost", min_value=0.0, key=f'leg_cost_{i}')
-                leg_origin = st.selectbox(f"Leg {i+1} Origin", options=[a.value for a in Airport], key=f'leg_origin_{i}')
-                leg_departure_date = st.date_input(f"Leg {i+1} Departure Date", key=f'leg_dep_date_{i}')
-                leg_departure_time = st.time_input(f"Leg {i+1} Departure Time", key=f'leg_dep_{i}', step=300)
-                leg_destination = st.selectbox(f"Leg {i+1} Destination", options=[a.value for a in Airport], key=f'leg_dest_{i}')
-                leg_arrival_date = st.date_input(f"Leg {i+1} Arrival Date", key=f'leg_arr_date_{i}')
-                leg_arrival_time = st.time_input(f"Leg {i+1} Arrival Time", key=f'leg_arrival_{i}', step=300)
+                leg_airline = st.selectbox(f"Airline", options=[a.value for a in Airline], key=f'leg_airline_{i}')
+                leg_confirmation = st.text_input(f"Confirmation Number", key=f'leg_conf_{i}')
+                leg_cost = st.number_input(f"Cost", min_value=0.0, key=f'leg_cost_{i}')
+                leg_origin = st.selectbox(f"Origin", options=[a.value for a in Airport], key=f'leg_origin_{i}')
+                leg_origin_terminal = st.text_input(f"Origin Terminal", key=f'leg_origin_terminal_{i}')
+                leg_departure_date = st.date_input(f"Departure Date", key=f'leg_dep_date_{i}')
+                leg_departure_time = st.time_input(f"Departure Time", key=f'leg_dep_{i}', step=300)
+                leg_destination = st.selectbox(f"Destination", options=[a.value for a in Airport], key=f'leg_dest_{i}')
+                leg_destination_terminal = st.text_input(f"Destination Terminal", key=f'leg_dest_terminal_{i}')
+                leg_arrival_date = st.date_input(f"Arrival Date", key=f'leg_arr_date_{i}')
+                leg_arrival_time = st.time_input(f"Arrival Time", key=f'leg_arrival_{i}', step=300)
                 legs.append(FlightLeg(origin=leg_origin, 
+                                      origin_terminal=leg_origin_terminal,
                                       airline=leg_airline,
                                       confirmation=leg_confirmation,
                                       cost=leg_cost,
                                       start_date=leg_departure_date, 
                                       start_time=leg_departure_time, 
-                                      destination=leg_destination, 
+                                      destination=leg_destination,
+                                      destination_terminal=leg_destination_terminal,
                                       end_date=leg_arrival_date, 
                                       end_time=leg_arrival_time))
 
@@ -146,6 +150,7 @@ def add_itinerary(trip_id: str):
                 st.rerun()
 
         elif itinerary_type == ItineraryType.Car.value:
+            rental_company = st.selectbox("Rental Company", options=[c.value for c in CarRentalCompany])
             pickup_location = st.text_input("Pick-up Location")
             pickup_date = st.date_input("Pick-up Date")
             pickup_time = st.time_input("Pick-up Time", step=300)
@@ -158,6 +163,7 @@ def add_itinerary(trip_id: str):
             if st.button("Add Car", use_container_width=True):
                 car=Car(
                     trip_id=trip_id,
+                    rental_company=rental_company,
                     pickup_location=pickup_location,
                     start_date=str(pickup_date),
                     start_time=pickup_time,

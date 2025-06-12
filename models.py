@@ -31,6 +31,18 @@ class ItineraryType(str, Enum):
     Car = 'Car'
     Activity = 'Activity'
 
+class CarRentalCompany(str, Enum):
+    Avis = 'Avis'
+    Hertz = 'Hertz'
+    Fox = 'Fox'
+    Sixt = 'Sixt'
+    Budget = 'Budget'
+    Thrifty = 'Thrifty'
+    Alamo = 'Alamo'
+    Enterprise = 'Enterprise'
+    National = 'National'
+    Other = 'Other'
+
 class BaseItineraryItem(BaseModel):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     start_date: Optional[date] = None
@@ -54,18 +66,20 @@ class Hotel(BaseItineraryItem):
     def display_start(self):
         st.markdown(f"#### {self.name}")
         st.markdown(f":red[Check-In Time]: {self.start_time}")
-        st.markdown(f"Maps URL: {self.maps_url}")
+        st.markdown(f"Address: [{self.address}]({self.generate_gmaps_url(self.address)})")
     
     def display_end(self):
         st.markdown(f"#### {self.name}")
         st.markdown(f":red[Check-Out Time]: {self.end_time}")
-        st.markdown(f"Maps URL: {self.maps_url}")
+        
     
 class FlightLeg(BaseItineraryItem):
     category: ItineraryType = ItineraryType.FlightLeg
     flight_id: Optional[str] = None
     origin: Airport
+    origin_terminal: Optional[str] = None
     destination: Airport
+    destination_terminal: Optional[str] = None
     confirmation: Optional[str] = None
     airline: Airline
     cost: Optional[float] = None
@@ -73,6 +87,8 @@ class FlightLeg(BaseItineraryItem):
     def display_start(self):
         st.markdown(f"#### {self.airline.value}")
         st.markdown(f":red[Origin]: [{self.origin.value}]({self.generate_gmaps_url(self.origin)})")
+        if self.origin_terminal:
+            st.markdown(f":red[Origin Terminal]: {self.origin_terminal}")
         if self.start_time:
             st.markdown(f":red[Departure Time]: {self.start_time}")
     
@@ -81,6 +97,8 @@ class FlightLeg(BaseItineraryItem):
         st.markdown(f":red[Destination]: [{self.destination.value}]({self.generate_gmaps_url(self.destination)})")
         if self.end_time:
             st.markdown(f":red[Arrival Time]: {self.end_time}")
+        if self.destination_terminal:
+            st.markdown(f":red[Destination Terminal]: {self.destination_terminal}")
 
 class Flight(BaseItineraryItem):
     category: ItineraryType = ItineraryType.Flight
@@ -95,19 +113,21 @@ class FlightwithLegs(Flight):
 class Car(BaseItineraryItem):
     category: ItineraryType = ItineraryType.Car
     trip_id: str
+    rental_company: Optional[str]
     pickup_location: str
     dropoff_location: str
     cost: float
     notes: Optional[str] = None
     
     def display_start(self):
-        st.markdown(f"#### {self.pickup_location}")
+        st.markdown(f"#### {self.rental_company}")
+        st.markdown(f":red[Pickup Location]: [{self.pickup_location}]({self.generate_gmaps_url(self.pickup_location)})")
         st.markdown(f":red[Pickup Time]: {self.start_time}")
     
     def display_end(self):
+        st.markdown(f"#### {self.rental_company}")
         dropoff_location = self.dropoff_location if self.dropoff_location else self.pickup_location
-        gmaps_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote_plus(dropoff_location)}"
-        st.markdown(f"##### [{dropoff_location}]({gmaps_url})")
+        st.markdown(f":red[Dropoff Location]: [{dropoff_location}]({self.generate_gmaps_url(dropoff_location)})")
         st.markdown(f":red[Dropoff Time]: {self.end_time}")
 
 class Activity(BaseItineraryItem):
