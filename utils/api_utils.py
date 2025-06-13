@@ -1,4 +1,6 @@
 import json
+from utils import utils
+import streamlit as st
 from uuid import uuid4
 from typing import Optional
 from database import supabase
@@ -13,6 +15,7 @@ def insert(model) -> str:
 def fetch_trip(trip_id: int) -> dict:
     return supabase.table("trip").select("*").eq("id", trip_id).single().execute().data
 
+@st.cache_data(ttl=1800)
 def fetch_all(table: str, model, filter_field: Optional[str] = None, filter_value: Optional[str] = None) -> list:
     query = supabase.table(table).select("*")
     
@@ -22,3 +25,8 @@ def fetch_all(table: str, model, filter_field: Optional[str] = None, filter_valu
     items = query.execute().data
 
     return [model(**item) for item in items]
+
+def delete_itinerary(table: str, id: str):
+    supabase.table(table).delete().eq("id", id).execute()
+    st.toast(f"Item deleted", icon="✅")
+    utils.clear_cache()

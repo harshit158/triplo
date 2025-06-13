@@ -1,6 +1,6 @@
 import streamlit as st
 from collections import defaultdict
-from utils import api_utils
+from utils import utils, api_utils
 from models import ItineraryType, Flight, FlightLeg, FlightwithLegs, Hotel, Car, Activity, Airport, Airline, Trip, CarRentalCompany
 
 def display_trip(trip: Trip):    
@@ -45,9 +45,11 @@ def display_trip(trip: Trip):
                 with st.container(height=500):
                     for date, display_funcs_and_itineraries in dates.items():
                         st.markdown(f"<h4 style='text-align: left; padding: 0px; color: green;'>{date}</h4><br>", unsafe_allow_html=True)
-                        for func, itinerary in display_funcs_and_itineraries:
+                        for i, (func, itinerary) in enumerate(display_funcs_and_itineraries):
                             st.markdown(f"<h5 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>{icons[itinerary.category]} {itinerary.category.value}</h5><br>", unsafe_allow_html=True)
                             func()
+                            with st.popover(f"Details"):
+                                st.button("Delete", key=f"delete_{date}_{i}_{itinerary.id}", on_click=api_utils.delete_itinerary, args=(itinerary.__class__.__name__.lower(), itinerary.id), use_container_width=True)
                             st.divider()
             
             with cols[1]:
@@ -64,32 +66,30 @@ def add_itinerary(trip_id: str):
 
         itinerary_type = st.selectbox(
             "Select Itinerary Type",
-            options=[t.value for t in ItineraryType if t != ItineraryType.FlightLeg]
+            options=[t.value for t in ItineraryType if t != ItineraryType.FlightLeg],
+            key=f"itinerary_type_{trip_id}"
         )
 
-        # Initialize placeholders
-        itinerary_item = None
-
         if itinerary_type == ItineraryType.Flight.value:
-            origin = st.selectbox("Origin", options=[a.value for a in Airport])
-            destination = st.selectbox("Destination", options=[a.value for a in Airport])
-            notes = st.text_area("Notes", key="flight_notes")
+            origin = st.selectbox("Origin", options=[a.value for a in Airport], key=f"flight_origin_{trip_id}")
+            destination = st.selectbox("Destination", options=[a.value for a in Airport], key=f"flight_destination_{trip_id}")
+            notes = st.text_area("Notes", key=f"flight_notes_{trip_id}")
             
-            num_legs = st.selectbox("Number of Flight Legs", options=[1, 2, 3])
+            num_legs = st.selectbox("Number of Flight Legs", options=[1, 2, 3], key=f"flight_num_legs_{trip_id}")
             legs = []
             for i in range(num_legs):
                 st.subheader(f"Leg {i+1}")
-                leg_airline = st.selectbox(f"Airline", options=[a.value for a in Airline], key=f'leg_airline_{i}')
-                leg_confirmation = st.text_input(f"Confirmation Number", key=f'leg_conf_{i}')
-                leg_cost = st.number_input(f"Cost", min_value=0.0, key=f'leg_cost_{i}')
-                leg_origin = st.selectbox(f"Origin", options=[a.value for a in Airport], key=f'leg_origin_{i}')
-                leg_origin_terminal = st.text_input(f"Origin Terminal", key=f'leg_origin_terminal_{i}')
-                leg_departure_date = st.date_input(f"Departure Date", key=f'leg_dep_date_{i}')
-                leg_departure_time = st.time_input(f"Departure Time", key=f'leg_dep_{i}', step=300)
-                leg_destination = st.selectbox(f"Destination", options=[a.value for a in Airport], key=f'leg_dest_{i}')
-                leg_destination_terminal = st.text_input(f"Destination Terminal", key=f'leg_dest_terminal_{i}')
-                leg_arrival_date = st.date_input(f"Arrival Date", key=f'leg_arr_date_{i}')
-                leg_arrival_time = st.time_input(f"Arrival Time", key=f'leg_arrival_{i}', step=300)
+                leg_airline = st.selectbox(f"Airline", options=[a.value for a in Airline], key=f'leg_airline_{i}_{trip_id}')
+                leg_confirmation = st.text_input(f"Confirmation Number", key=f'leg_conf_{i}_{trip_id}')
+                leg_cost = st.number_input(f"Cost", min_value=0.0, key=f'leg_cost_{i}_{trip_id}')
+                leg_origin = st.selectbox(f"Origin", options=[a.value for a in Airport], key=f'leg_origin_{i}_{trip_id}')
+                leg_origin_terminal = st.text_input(f"Origin Terminal", key=f'leg_origin_terminal_{i}_{trip_id}')
+                leg_departure_date = st.date_input(f"Departure Date", key=f'leg_dep_date_{i}_{trip_id}')
+                leg_departure_time = st.time_input(f"Departure Time", key=f'leg_dep_{i}_{trip_id}', step=300)
+                leg_destination = st.selectbox(f"Destination", options=[a.value for a in Airport], key=f'leg_dest_{i}_{trip_id}')
+                leg_destination_terminal = st.text_input(f"Destination Terminal", key=f'leg_dest_terminal_{i}_{trip_id}')
+                leg_arrival_date = st.date_input(f"Arrival Date", key=f'leg_arr_date_{i}_{trip_id}')
+                leg_arrival_time = st.time_input(f"Arrival Time", key=f'leg_arrival_{i}_{trip_id}', step=300)
                 legs.append(FlightLeg(origin=leg_origin, 
                                       origin_terminal=leg_origin_terminal,
                                       airline=leg_airline,
@@ -102,7 +102,7 @@ def add_itinerary(trip_id: str):
                                       end_date=leg_arrival_date, 
                                       end_time=leg_arrival_time))
 
-            if st.button("Add Flight", use_container_width=True):
+            if st.button("Add Flight", use_container_width=True, key=f"add_flight_{trip_id}"):
                     flight = Flight(
                         trip_id=trip_id,
                         origin=origin,
@@ -117,6 +117,7 @@ def add_itinerary(trip_id: str):
                         leg.flight_id = flight_id
                         api_utils.insert(leg)
                     
+                    utils.clear_cache()
                     st.rerun()
                     
 
@@ -147,6 +148,7 @@ def add_itinerary(trip_id: str):
                 
                 st.toast(f"Hotel added: {hotel.name}", icon="✅")
                 api_utils.insert(hotel)
+                utils.clear_cache()
                 st.rerun()
 
         elif itinerary_type == ItineraryType.Car.value:
@@ -176,6 +178,7 @@ def add_itinerary(trip_id: str):
             
                 st.toast(f"Car added: {car.pickup_location} to {car.dropoff_location}", icon="✅")
                 api_utils.insert(car)
+                utils.clear_cache()
                 st.rerun()
 
         elif itinerary_type == ItineraryType.Activity.value:
@@ -199,15 +202,8 @@ def add_itinerary(trip_id: str):
                     
                 st.toast(f"Activity added: {activity.start_date} @ {activity.location}", icon="✅")
                 api_utils.insert(activity)
+                utils.clear_cache()
                 st.rerun()
-
-        # Save to session state if created
-        if itinerary_item:
-            if 'itinerary_list' not in st.session_state:
-                st.session_state.itinerary_list = []
-            st.session_state.itinerary_list.append(itinerary_item)
-            st.toast(f"{itinerary_item.type.value} added to trip!")
-            st.rerun()
 
 def add_trip():
     with st.popover("Add a Trip", use_container_width=True):
@@ -221,3 +217,5 @@ def add_trip():
             st.toast(f"Trip added: {trip.name}", icon="✅")
             
             api_utils.insert(trip)
+            utils.clear_cache()
+            st.rerun()
