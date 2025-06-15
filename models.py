@@ -59,7 +59,6 @@ class Hotel(BaseItineraryItem):
     trip_id: str
     name: str
     address: str
-    maps_url: HttpUrl
     notes: Optional[str] = None
     cost: float
     

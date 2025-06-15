@@ -1,6 +1,7 @@
 import streamlit as st
+import os
 from collections import defaultdict
-from utils import utils, api_utils
+from utils import utils, maps_utils, api_utils
 from models import ItineraryType, Flight, FlightLeg, FlightwithLegs, Hotel, Car, Activity, Airport, Airline, Trip, CarRentalCompany
 
 def display_trip(trip: Trip):    
@@ -18,12 +19,11 @@ def display_trip(trip: Trip):
     dates = defaultdict(list)
     
     for itinerary in all_itineraries:
-        dates[itinerary.start_date].append([itinerary.display_start, itinerary])
+        dates[itinerary.start_date].append([itinerary.display_start, itinerary, itinerary.start_time])
         if itinerary.end_date:
-            dates[itinerary.end_date].append([itinerary.display_end, itinerary])
+            dates[itinerary.end_date].append([itinerary.display_end, itinerary, itinerary.end_time])
     
-    # sort dates
-    dates = dict(sorted(dates.items()))
+    dates_and_itineraries = utils.sort_itineraries(dates)
     
     icons = {
         ItineraryType.FlightLeg: "✈️",
@@ -43,9 +43,9 @@ def display_trip(trip: Trip):
                 add_itinerary(trip.id)
                 
                 with st.container(height=500):
-                    for date, display_funcs_and_itineraries in dates.items():
+                    for date, display_funcs_and_itineraries in dates_and_itineraries.items():
                         st.markdown(f"<h4 style='text-align: left; padding: 0px; color: green;'>{date}</h4><br>", unsafe_allow_html=True)
-                        for i, (func, itinerary) in enumerate(display_funcs_and_itineraries):
+                        for i, (func, itinerary, time) in enumerate(display_funcs_and_itineraries):
                             st.markdown(f"<h5 style='text-align: left; background-color: #E8E8E8; padding: 0px;'>{icons[itinerary.category]} {itinerary.category.value}</h5><br>", unsafe_allow_html=True)
                             func()
                             with st.popover(f"Details"):
@@ -53,7 +53,8 @@ def display_trip(trip: Trip):
                             st.divider()
             
             with cols[1]:
-                st.map(height=560)
+                maps_utils.display_map(dates_and_itineraries)
+                
     
 def display_trips():
     trips = api_utils.fetch_all("trip", Trip)
@@ -124,7 +125,6 @@ def add_itinerary(trip_id: str):
         elif itinerary_type == ItineraryType.Hotel.value:
             name = st.text_input("Hotel Name", value="dummy")
             address = st.text_input("Address", value="dummy")
-            maps_url = st.text_input("Google Maps URL", value="https://www.google.com/maps")
             check_in_date = st.date_input("Check-in Date")
             check_in_time = st.time_input("Check-in Time", step=300)
             check_out_date = st.date_input("Check-out Date")
@@ -137,7 +137,6 @@ def add_itinerary(trip_id: str):
                     trip_id=trip_id,
                     name=name,
                     address=address,
-                    maps_url=maps_url,
                     start_date=str(check_in_date),
                     start_time=check_in_time,
                     end_date=str(check_out_date),
